@@ -228,54 +228,22 @@ class DenverBillScraper(LegistarAPIBillScraper, Scraper):
 
             yield bill
 
+# http://webapi.legistar.com/v1/denver/Actions
 ACTION = {
-          'Direct Introduction':
-              {'ocd' : 'introduction', 'order' : 0},
-          'Introduced (Agreed Calendar)':
-              {'ocd' : 'introduction', 'order' : 0},
-          'Rules Suspended - Immediate Consideration':
-              {'ocd' : 'introduction', 'order' : 0},
-
-          'Referred':
-              {'ocd': 'referral-committee', 'order': 1},
-          'Re-Referred':
-              {'ocd': 'referral-committee', 'order': 1},
-          'Substituted in Committee':
-              {'ocd': 'substitution', 'order': 1},
-          'Amended in Committee':
-              {'ocd': 'amendment-passage', 'order': 1},
-          'Withdrawn':
-              {'ocd': 'withdrawal', 'order': 1},
-          'Remove Co-Sponsor(s)':
-              {'ocd': None, 'order': 1},
-          'Add Co-Sponsor(s)':
-              {'ocd': None, 'order': 1},
-          'Recommended for Re-Referral':
-              {'ocd': None, 'order': 1},
-          'Committee Discharged':
-              {'ocd': 'committee-passage', 'order': 1},
-          'Held in Committee':
-              {'ocd': 'committee-failure', 'order': 1},
-          'Recommended Do Not Pass':
-              {'ocd': 'committee-passage-unfavorable', 'order': 1},
-          'Recommended to Pass':
-              {'ocd': 'committee-passage-favorable', 'order': 1},
-
-          'Deferred and Published':
-              {'ocd': None, 'order': 2},
-          'Amended in City Council':
-              {'ocd': 'amendment-passage', 'order': 2},
-          'Failed to Pass':
-              {'ocd': 'failure', 'order': 2},
-          'Passed as Amended':
-              {'ocd': 'passage', 'order': 2},
-
+          'filed':
+              {'ocd': 'filing', 'order': 0},
           'ordered published on first reading':
               {'ocd': ['introduction', 'reading-1'], 'order': 1},
           'ordered published with a future courtesy public hearing':
               {'ocd': 'introduction', 'order': 1},
+          'referred':
+              {'ocd': 'referral', 'order': 2},
           'adopted':
               {'ocd': 'passage', 'order': 2},
+          'adopted':
+              {'ocd': 'passage', 'order': 2},
+          'withdrawn':
+              {'ocd': 'withdrawal', 'order': 2},
           'approved by consent':
               {'ocd': 'passage', 'order': 2},
           'postponed':
@@ -289,7 +257,7 @@ ACTION = {
           'adopted en bloc' :
               {'ocd': 'passage', 'order': 2},
           'approved for filing' :
-              {'ocd': 'passage', 'order': 2},
+              {'ocd': 'filing', 'order': 2},
           'placed upon final consideration and do pass' :
               {'ocd': 'passage', 'order': 2},
           'ordered published with a future required public hearing' :
@@ -298,32 +266,19 @@ ACTION = {
               {'ocd': 'introduction', 'order': 0},
           'amended' :
               {'ocd': 'amendment-passage', 'order': 1},
+          'continued' :
+              {'ocd': None, 'order': 1},
+          'ordered published as amended' :
+              {'ocd': 'amendment-passage', 'order': 1},
+          'required public hearing on final consideration' :
+              {'ocd': None, 'order': 1},
+          'placed upon final consideration and do pass as amended' :
+              {'ocd': ['passage', 'amendment-passage'], 'order': 1},
           'signed' :
               {'ocd': 'executive-signature', 'order': 3},
-
-
-          'Approved as Amended':
-              {'ocd': 'passage', 'order': 2},
-          'Passed as Substitute':
-              {'ocd': 'passage', 'order': 2},
-          'Adopted as Substitute':
-              {'ocd': None, 'order': 2},
-          'Placed on File':
-              {'ocd': 'filing', 'order': 2},
-          'Tabled':
-              {'ocd': 'deferral', 'order': 2},
-          'Vetoed':
-              {'ocd': 'failure', 'order': 2},
-
-          'Published in Special Pamphlet':
-              {'ocd': None, 'order': 3},
-          'Signed by Mayor':
-              {'ocd': 'executive-signature', 'order': 3},
-
-          'Repealed':
-              {'ocd': None, 'order': 4},
         }
 
+# http://webapi.legistar.com/v1/denver/MatterTypes
 BILL_TYPES = {'Ordinance' : 'ordinance',
               'Resolution' : 'resolution',
               'Order' : 'order',
@@ -333,6 +288,10 @@ BILL_TYPES = {'Ordinance' : 'ordinance',
               'Communication' : None,
               'Presentation': None,
               'Appointment' : 'appointment',
+              'Historical': None,
+              'Executive Session': None,
+              'Nomination': 'nomination',
+              'Announcement': None,
               'Report' : None,
               'Bill': 'bill',
               'Approved Minutes': None}
