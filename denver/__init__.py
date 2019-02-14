@@ -1,6 +1,6 @@
 from pupa.scrape import Jurisdiction, Organization, Person
 
-# from .people import DenverPersonScraper
+from .people import DenverPersonScraper
 # from .events import DenverEventsScraper
 from .bills import DenverBillScraper
 
@@ -15,7 +15,7 @@ class Denver(Jurisdiction):
     parties = [ {'name': 'Democrats' } ]
 
     scrapers = {
-        # "people": DenverPersonScraper,
+        "people": DenverPersonScraper,
         # "events": DenverEventsScraper,
         "bills": DenverBillScraper,
     }
