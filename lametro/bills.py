@@ -9,15 +9,53 @@ from pupa.utils import _make_pseudo_id
 
 from legistar.bills import LegistarBillScraper, LegistarAPIBillScraper
 
+from .secrets import TOKEN
+
 class LametroBillScraper(LegistarAPIBillScraper, Scraper):
-    BASE_URL = 'http://webapi.legistar.com/v1/metro'
+    BASE_URL = 'https://webapi.legistar.com/v1/metro'
     BASE_WEB_URL = 'https://metro.legistar.com'
     TIMEZONE = "America/Los_Angeles"
 
     VOTE_OPTIONS = {'aye' : 'yes',
                     'nay' : 'no',
                     'recused' : 'abstain',
-                    'present' : 'abstain'}
+                    'present' : 'abstain',
+                    'conflict': 'abstain',
+                    None : 'abstain'}
+
+    START_DATE_PRIVATE_SCRAPE = '2016-07-01'
+
+    def __init__(self, *args, **kwargs):
+        '''
+        Metro scrapes private (or restricted) bills.
+        Private bills have 'MatterRestrictViewViaWeb' set as True
+        and/or a MatterStatusName of 'Draft' and/or do not appear in the
+        Legistar web interface.
+
+        The following properties enable scraping private bills:
+        :params - URL params that include the secret Metro API Token
+
+        :scrape_restricted - a boolean used in `python-legistar-scraper`: it
+        indicates that the scrape should continue, even if the bill does not exist in
+        the Legistar web interface
+
+        START_DATE_PRIVATE_SCRAPE (class attr) - a timestamp that indicates when to start scraping
+        private bills. The scraper can safely skip bills from early legislative sessions,
+        because those bills will remain private.
+        '''
+        super().__init__(*args, **kwargs)
+
+        self.params = {'Token': TOKEN}
+        self.scrape_restricted = True
+
+    def _is_restricted(self, matter):
+        if (matter['MatterRestrictViewViaWeb'] or
+            matter['MatterStatusName'] == 'Draft' or
+            matter['MatterBodyName'] == 'TO BE REMOVED' or
+            not matter.get('legistar_url')):
+            return True
+        else:
+            return False
 
     def session(self, action_date) :
         from . import Lametro
@@ -51,7 +89,7 @@ class LametroBillScraper(LegistarAPIBillScraper, Scraper):
 
             sponsorship['name'] = sponsor_name
             sponsorship['entity_type'] = 'organization'
-            
+
             yield sponsorship
 
     def actions(self, matter_id) :
@@ -82,13 +120,13 @@ class LametroBillScraper(LegistarAPIBillScraper, Scraper):
                 if (action['MatterHistoryEventId'] is not None
                     and action['MatterHistoryRollCallFlag'] is not None
                     and action['MatterHistoryPassedFlag'] is not None) :
-                    
+
                     # Do we want to capture vote events for voice votes?
-                    # Right now we are not? 
+                    # Right now we are not?
                     bool_result = action['MatterHistoryPassedFlag']
                     result = 'pass' if bool_result else 'fail'
 
-                    votes = (result, self.votes(action['MatterHistoryId'])) 
+                    votes = (result, self.votes(action['MatterHistoryId']))
                 else :
                     votes = (None, [])
 
@@ -101,7 +139,7 @@ class LametroBillScraper(LegistarAPIBillScraper, Scraper):
         Note that passing a value for :matter_ids supercedes the value of
         :window, such that the given matters will be scraped regardless of
         when they were updated.
-        
+
         Optional parameters
         :window (numeric) - Amount of time for which to scrape updates, e.g.
         a window of 7 will scrape legislation updated in the last week. Pass
@@ -121,10 +159,8 @@ class LametroBillScraper(LegistarAPIBillScraper, Scraper):
 
         n_days_ago = datetime.datetime.utcnow() - datetime.timedelta(float(window))
         for matter in matters:
-            # If this Boolean field is True, then do not scrape the Bill.
-            # This issue explains why a restricted Bill might appear (unwelcome) in the Legistar API:
-            # https://github.com/datamade/la-metro-councilmatic/issues/345#issuecomment-421184826 
-            if matter['MatterRestrictViewViaWeb']:
+            # Skip this bill, until Metro cleans up duplicate in Legistar API
+            if matter['MatterFile'] == '2017-0447':
                 continue
 
             matter_id = matter['MatterId']
@@ -134,6 +170,10 @@ class LametroBillScraper(LegistarAPIBillScraper, Scraper):
             identifier = matter['MatterFile']
 
             if not all((date, title, identifier)) :
+                continue
+
+            # Do not scrape private bills introduced before this timestamp.
+            if self._is_restricted(matter) and (date < self.START_DATE_PRIVATE_SCRAPE):
                 continue
 
             bill_session = self.session(self.toTime(date))
@@ -149,14 +189,39 @@ class LametroBillScraper(LegistarAPIBillScraper, Scraper):
                         legislative_session=bill_session,
                         title=title,
                         classification=bill_type,
-                        from_organization={"name":"Board of Directors"})
-            
-            legistar_web = matter['legistar_url']
-            
-            legistar_api = self.BASE_URL + '/matters/{0}'.format(matter_id)
+                        from_organization={"name": "Board of Directors"})
 
-            bill.add_source(legistar_web, note='web')
+            # The Metro scraper scrapes private bills.
+            # However, we do not want to capture significant data about private bills,
+            # other than the value of the helper function `_is_restricted` and a last modified timestamp.
+            # We yield private bills early, wipe data from previously imported once-public bills,
+            # and include only data *required* by the pupa schema.
+            # https://github.com/opencivicdata/pupa/blob/master/pupa/scrape/schemas/bill.py
+            bill.extras = {'restrict_view' : self._is_restricted(matter)}
+
+            # Add API source early.
+            # Private bills should have this url for debugging.
+            legistar_api = self.BASE_URL + '/matters/{0}'.format(matter_id)
             bill.add_source(legistar_api, note='api')
+
+            if self._is_restricted(matter):
+                # required fields
+                bill.title = 'Restricted View'
+
+                # wipe old data
+                bill.extras['plain_text'] = ''
+                bill.extras['rtf_text'] = ''
+                bill.sponsorships = []
+                bill.related_bills = []
+                bill.versions = []
+                bill.documents = []
+                bill.actions = []
+
+                yield bill
+                continue
+
+            legistar_web = matter['legistar_url']
+            bill.add_source(legistar_web, note='web')
 
             for identifier in alternate_identifiers:
                 bill.add_identifier(identifier)
@@ -172,7 +237,7 @@ class LametroBillScraper(LegistarAPIBillScraper, Scraper):
 
                 result, votes = vote
                 if result :
-                    vote_event = VoteEvent(legislative_session=bill.legislative_session, 
+                    vote_event = VoteEvent(legislative_session=bill.legislative_session,
                                            motion_text=action['description'],
                                            organization=action['organization'],
                                            classification=None,
@@ -184,10 +249,13 @@ class LametroBillScraper(LegistarAPIBillScraper, Scraper):
                     vote_event.add_source(legistar_api + '/histories')
 
                     for vote in votes :
-                        raw_option = vote['VoteValueName'].lower()
+                        try:
+                            raw_option = vote['VoteValueName'].lower()
+                        except AttributeError:
+                            raw_option = None
                         clean_option = self.VOTE_OPTIONS.get(raw_option,
                                                              raw_option)
-                        vote_event.vote(clean_option, 
+                        vote_event.vote(clean_option,
                                         vote['VotePersonName'].strip())
 
                     yield vote_event
@@ -201,7 +269,7 @@ class LametroBillScraper(LegistarAPIBillScraper, Scraper):
 
             for relation in self.relations(matter_id):
                 try:
-                    # Get data (i.e., json) for the related bill. 
+                    # Get data (i.e., json) for the related bill.
                     # Then, we can find the 'MatterFile' (i.e., identifier) and the 'MatterIntroDate' (i.e., to determine its legislative session).
                     # Sometimes, the related bill does not yet exist: in this case, throw an error, and continue.
                     related_bill = self.endpoint('/matters/{0}', relation['MatterRelationMatterId'])
@@ -227,9 +295,10 @@ class LametroBillScraper(LegistarAPIBillScraper, Scraper):
                                            attachment['MatterAttachmentHyperlink'],
                                            media_type="application/pdf")
 
-            bill.extras = {'local_classification' : matter['MatterTypeName']}
+            bill.extras['local_classification'] = matter['MatterTypeName']
 
-            text = self.text(matter_id)
+            matter_version_value = matter['MatterVersion']
+            text = self.text(matter_id, matter_version_value)
 
             if text :
                 if text['MatterTextPlain'] :
@@ -240,6 +309,8 @@ class LametroBillScraper(LegistarAPIBillScraper, Scraper):
 
             yield bill
 
+# Defined according to OCD standard here:
+# https://github.com/opencivicdata/python-opencivicdata/blob/master/opencivicdata/common.py#L113
 ACTION_CLASSIFICATION = {'WITHDRAWN' : 'withdrawal',
                          'APPROVED' : 'passage',
                          'RECOMMENDED FOR APPROVAL' : 'committee-passage-favorable',
@@ -255,7 +326,9 @@ ACTION_CLASSIFICATION = {'WITHDRAWN' : 'withdrawal',
                          'CARRIED OVER' : 'deferral',
                          'RECEIVED' : 'receipt',
                          'REFERRED' : 'referral-committee',
-                         'FORWARDED DUE TO ABSENCES AND CONFLICTS' : 'committee-passage'}
+                         'FORWARDED DUE TO ABSENCES AND CONFLICTS' : 'committee-passage',
+                         'NO ACTION TAKEN': 'filing',
+                         'FAILED' : 'failure'}
 
 BILL_TYPES = {'Contract' : None,
               'Budget' : None,
@@ -276,5 +349,5 @@ BILL_TYPES = {'Contract' : None,
               'Ordinance / Administrative Code': None,
               'Appointment': None,
               'Public Hearing': None,
-              'Application': None}
-
+              'Application': None,
+              'Closed Session': None}
