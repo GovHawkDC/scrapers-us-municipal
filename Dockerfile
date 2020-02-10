@@ -51,9 +51,9 @@ RUN apt-get install -y \
         mdbtools \
         freetds-dev
 
-RUN virtualenv -p $(which python3) /opt/openstates/venv-pupa/
-RUN /opt/openstates/venv-pupa/bin/pip install -e git+https://github.com/GovHawkDC/pupa.git@feature/inline-cache-check#egg=pupa
-RUN /opt/openstates/venv-pupa/bin/pip install -r /opt/ocd/scrapers-us-municipal/requirements.txt
+RUN virtualenv -p $(which python3) /opt/ocd/venv-pupa/
+RUN /opt/ocd/venv-pupa/bin/pip install -e git+https://github.com/GovHawkDC/pupa.git@feature/inline-cache-check#egg=pupa
+RUN /opt/ocd/venv-pupa/bin/pip install -r /opt/ocd/scrapers-us-municipal/requirements.txt
 
 WORKDIR /opt/ocd/scrapers-us-municipal
 
