@@ -1,5 +1,6 @@
 from pupa.scrape import Event, Scraper
 from pupa.utils import _make_pseudo_id
+from .utils import extract_onclick
 import datetime
 import itertools
 import pytz
@@ -86,7 +87,7 @@ class HoustonEventScraper(Scraper):
             if link.get('href'):
                 url = link.get('href')
             elif link.get('onclick'):
-                url = self.extract_onclick(link.get('onclick'))
+                url = extract_onclick(link.get('onclick'), self.BASE_URL)
             event.add_document('Agenda', url, media_type="text/html")
 
         if row.xpath('td[{}]//a[1]'.format(event_column_map['Download Agenda'])):
@@ -94,31 +95,28 @@ class HoustonEventScraper(Scraper):
             if link.get('href'):
                 url = link.get('href')
             elif link.get('onclick'):
-                url = self.extract_onclick(link.get('onclick'))
+                url = extract_onclick(link.get('onclick'), self.BASE_URL)
             event.add_document('Agenda', url, media_type="application/pdf")
 
-            # event.add_document(notice_name, notice_href, media_type="text/html")
-            # for bill in self.get_related_bills(notice_href):
-            #     a = event.add_agenda_item(description=bill["descr"].strip())
-            #     a.add_bill(bill["bill_id"], note=bill["type"])
-            # yield event
+        if row.xpath('td[{}]//a[1]'.format(event_column_map['Minutes Recap'])):
+            link = row.xpath('td[{}]//a[1]'.format(event_column_map['Minutes Recap']))[0]
+            if link.get('href'):
+                url = link.get('href')
+            elif link.get('onclick'):
+                url = extract_onclick(link.get('onclick'), self.BASE_URL)
+            event.add_document('Minutes Recap', url, media_type="text/html")
 
+        if row.xpath('td[{}]//a[1]'.format(event_column_map['Legal Minutes'])):
+            link = row.xpath('td[{}]//a[1]'.format(event_column_map['Legal Minutes']))[0]
+            if link.get('href'):
+                url = link.get('href')
+            elif link.get('onclick'):
+                url = extract_onclick(link.get('onclick'), self.BASE_URL)
+            event.add_document('Legal Minutes', url, media_type="application/pdf")
 
         event.add_source(self.BASE_URL)
 
         yield event
-
-    def extract_onclick(self, onclick):
-        before = re.escape("javascript:ViewHTML=window.open('")
-        after = re.escape("','ViewHTML")
-        token_re = "{}(.*){}".format(before, after)
-        result = re.search(token_re, onclick)
-        url = result.group(1)
-
-        if not url.startswith('http'):
-            url = '{}{}'.format(self.BASE_URL, url)
-
-        return url
 
     def asp_post(self, url, params, page=None):
         headers = {
@@ -135,22 +133,6 @@ class HoustonEventScraper(Scraper):
 
         (viewstate,) = page.xpath('//input[@id="__VIEWSTATE"]/@value')
         (viewstategenerator,) = page.xpath('//input[@id="__VIEWSTATEGENERATOR"]/@value')
-        # (eventvalidation,) = page.xpath('//input[@id="__EVENTVALIDATION"]/@value')
-
-        # hiddenfield_js_url = page.xpath(
-        #     '//script[contains(@src,"?_TSM_HiddenField")]/@src'
-        # )[0]
-        # hiddenfield_js_url = "{}{}".format(
-        #     "https://sutra.oslpr.org/", hiddenfield_js_url
-        # )
-
-        # hiddenfield_js = self.s.get(hiddenfield_js_url).text
-
-        # before = re.escape('get("ctl00_tsm_HiddenField").value += \'')
-        # after = re.escape("';Sys.Application.remove_load(fn);")
-        # token_re = "{}(.*){}".format(before, after)
-        # result = re.search(token_re, hiddenfield_js)
-        # hiddenfield = result.group(1)
 
         form = {
             "__VIEWSTATE": viewstate,
@@ -161,11 +143,6 @@ class HoustonEventScraper(Scraper):
         }
 
         form = {**form, **params}
-
-        cookie_obj = requests.cookies.create_cookie(
-            domain="sutra.oslpr.org", name="SUTRASplash", value="NoSplash"
-        )
-        self.s.cookies.set_cookie(cookie_obj)
 
         response_text = self.s.post(url, data=form, headers=headers).text
         return response_text        
