@@ -4,11 +4,15 @@ import datetime
 import itertools
 import pytz
 import requests
+import re
 import lxml.html
 
 class HoustonBillScraper(Scraper):
     BASE_URL = "https://houston.novusagenda.com/agendapublic/"
-    TIMEZONE = "America/Chicago"
+    TIMEZONE = pytz.timezone("America/Chicago")
+
+    ORDINANCE_NO_REGEX = r'^(HPW)*[\s|–\-]*(\w+[\-\d+B]*)'
+
     s = requests.Session()
 
     def session(self, action_date):
@@ -51,36 +55,66 @@ class HoustonBillScraper(Scraper):
         html = self.asp_post(self.BASE_URL, params)
         page = lxml.html.fromstring(html)
 
-        event_column_map = {}
+        bill_column_map = {}
         row_index = 1
-        for row in page.xpath('//table[@id="ctl00_ContentPlaceHolder1_SearchAgendasMeetings_radGridMeetings_ctl00"]/thead/tr[1]/th'):
+        for row in page.xpath('//table[@id="ctl00_ContentPlaceHolder1_SearchAgendasMeetings_radGridItems_ctl00"]/thead/tr[1]/th'):
             row_text = row.text_content().strip()
             if row_text != '' and row_text != '&nbsp;':
-                event_column_map[row_text] = row_index
+                bill_column_map[row_text] = row_index
             row_index += 1
 
-        print(event_column_map)
+        print(bill_column_map)
 
-        for row in page.xpath('//table[@id="ctl00_ContentPlaceHolder1_SearchAgendasMeetings_radGridMeetings_ctl00"]/tbody/tr[contains(@class,"rgRow") or contains(@class,"rgAltRow")]'):
-            yield from self.parse_event_row(event_column_map, row)
+        for row in page.xpath('//table[@id="ctl00_ContentPlaceHolder1_SearchAgendasMeetings_radGridItems_ctl00"]/tbody/tr[contains(@class,"rgRow") or contains(@class,"rgAltRow")]'):
+            yield from self.parse_bill_row(bill_column_map, row)
 
-    def parse_event_row(self, event_column_map, row):
-        date_text = row.xpath('td[{}]/text()'.format(event_column_map['Meeting Date']))[0].strip()
-        event_date = datetime.datetime.strptime(date_text, "%m/%d/%y")
+    def parse_bill_row(self, bill_column_map, row):
+        item_type = row.xpath('td[{}]/text()'.format(bill_column_map['Category']))[0].strip()
+        if item_type != 'ORDINANCES':
+            return
 
-        event_type = row.xpath('td[{}]/text()'.format(event_column_map['Meeting Type']))[0].strip()
+        date_text = row.xpath('td[{}]/text()'.format(bill_column_map['Date']))[0].strip()
+        bill_date = self.TIMEZONE.localize(
+            datetime.datetime.strptime(date_text, "%m/%d/%y")
+        )
 
-        event_location = row.xpath('td[{}]/text()'.format(event_column_map['Meeting Location']))[0].strip()
+        item_title = row.xpath('td[{}]/text()'.format(bill_column_map['Title']))[0].strip()
+        if re.search(self.ORDINANCE_NO_REGEX, item_title):
+            match = re.search(self.ORDINANCE_NO_REGEX, item_title)
+            bill_no = match.group(2)
+            bill_title = item_title
+        else:
+            self.info("NO regex match for {}, passing", item_title)
+            return
 
-        event = Event(name=event_type,
-                    start_date=event_date,
-                    # description=description,
-                    location_name=event_location,
-                    )
+        bill = Bill(
+            bill_no,
+            str(bill_date.year),
+            bill_title,
+            from_organization={"name": "Houston City Council"}
+        )
+        bill.add_source(self.BASE_URL)
+        yield bill
+        # print(bill_no)
+        # print(bill_title)
 
-        event.add_source(self.BASE_URL)
+        # date_text = row.xpath('td[{}]/text()'.format(event_column_map['Meeting Date']))[0].strip()
+        # event_date = datetime.datetime.strptime(date_text, "%m/%d/%y")
 
-        yield event
+        # event_type = row.xpath('td[{}]/text()'.format(event_column_map['Meeting Type']))[0].strip()
+
+        # event_location = row.xpath('td[{}]/text()'.format(event_column_map['Meeting Location']))[0].strip()
+
+        # event = Event(name=event_type,
+        #             start_date=event_date,
+        #             # description=description,
+        #             location_name=event_location,
+        #             )
+
+        # event.add_source(self.BASE_URL)
+
+        # yield event
+
 
     def asp_post(self, url, params, page=None):
         headers = {
@@ -97,22 +131,6 @@ class HoustonBillScraper(Scraper):
 
         (viewstate,) = page.xpath('//input[@id="__VIEWSTATE"]/@value')
         (viewstategenerator,) = page.xpath('//input[@id="__VIEWSTATEGENERATOR"]/@value')
-        # (eventvalidation,) = page.xpath('//input[@id="__EVENTVALIDATION"]/@value')
-
-        # hiddenfield_js_url = page.xpath(
-        #     '//script[contains(@src,"?_TSM_HiddenField")]/@src'
-        # )[0]
-        # hiddenfield_js_url = "{}{}".format(
-        #     "https://sutra.oslpr.org/", hiddenfield_js_url
-        # )
-
-        # hiddenfield_js = self.s.get(hiddenfield_js_url).text
-
-        # before = re.escape('get("ctl00_tsm_HiddenField").value += \'')
-        # after = re.escape("';Sys.Application.remove_load(fn);")
-        # token_re = "{}(.*){}".format(before, after)
-        # result = re.search(token_re, hiddenfield_js)
-        # hiddenfield = result.group(1)
 
         form = {
             "__VIEWSTATE": viewstate,
@@ -123,11 +141,6 @@ class HoustonBillScraper(Scraper):
         }
 
         form = {**form, **params}
-
-        cookie_obj = requests.cookies.create_cookie(
-            domain="sutra.oslpr.org", name="SUTRASplash", value="NoSplash"
-        )
-        self.s.cookies.set_cookie(cookie_obj)
 
         response_text = self.s.post(url, data=form, headers=headers).text
         return response_text        
