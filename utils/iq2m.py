@@ -17,7 +17,6 @@ class IQ2MScraper():
         return str(action_date.year)
 
     def scrape(self, window=3):
-        print("SCRAPE CITY")
         year = datetime.datetime.today().year
         calendar_url = '{}/Citizens/Calendar.aspx?From=1/1/{}&To=12/31/{}'.format(self.BASE_URL, year, year)
 
@@ -30,7 +29,7 @@ class IQ2MScraper():
             yield from self.scrape_event_page(event_url)
 
     def scrape_event_page(self, url):
-        self.info(url)
+        self.info("Downloading {}".format(url))
         page = lxml.html.fromstring(requests.get(url).content)
         page.make_links_absolute(self.BASE_URL)
 
@@ -63,5 +62,14 @@ class IQ2MScraper():
             )
 
         # TODO: ones with onlicks are video links
+
+        for outline_row in page.xpath('//span[@id="ContentPlaceholder1_lblOutline"]/table[@id="MeetingDetail"]/tr'):
+            item_title = outline_row.xpath('string(td[contains(@class,"Title")])').strip()
+
+            if outline_row.xpath('td[contains(@class,"Num")]/text()'):
+                item_num = outline_row.xpath('td[contains(@class,"Num")]/text()')[0].strip()
+                item_title = '{} {}'.format(item_num, item_title)
+                # TODO: Should we add links here as documents? Might overwhelm
+            event.add_agenda_item(item_title)
 
         yield event
