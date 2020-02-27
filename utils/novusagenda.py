@@ -7,7 +7,7 @@ import requests
 import re
 import lxml.html
 
-class NovusAgenda():
+class NovusAgendaScraper():
     BASE_URL = ""
     TIMEZONE = ""
     s = requests.Session()
