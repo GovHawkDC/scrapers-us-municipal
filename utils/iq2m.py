@@ -11,6 +11,7 @@ import lxml.html
 class IQ2MScraper():
     BASE_URL = ""
     TIMEZONE = ""
+    JURIS_NAME = ""
     s = requests.Session()
 
     def session(self, action_date):
@@ -29,6 +30,8 @@ class IQ2MScraper():
             yield from self.scrape_event_page(event_url)
 
     def scrape_event_page(self, url):
+        #TODO: CANCELLED
+        # http://providenceri.iqm2.com/Citizens/Detail_Meeting.aspx?ID=12362
         self.info("Downloading {}".format(url))
         page = lxml.html.fromstring(requests.get(url).content)
         page.make_links_absolute(self.BASE_URL)
@@ -51,6 +54,9 @@ class IQ2MScraper():
             location_name=event_location,
             )
         event.add_source(url)
+
+        participant = "{} {}".format(self.JURIS_NAME, event_group)
+        event.add_participant(participant, 'organization')
 
         for link_row in page.xpath('//div[@id="ContentPlaceholder1_pnlDownloads"]/a[not(@onclick)]'):
             link_href = link_row.xpath('@href')[0]
