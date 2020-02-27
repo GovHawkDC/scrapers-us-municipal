@@ -60,8 +60,6 @@ class NovusAgendaScraper():
                 event_column_map[row_text] = row_index
             row_index += 1
 
-        print(event_column_map)
-
         for row in page.xpath('//table[@id="ctl00_ContentPlaceHolder1_SearchAgendasMeetings_radGridMeetings_ctl00"]/tbody/tr[contains(@class,"rgRow") or contains(@class,"rgAltRow")]'):
             yield from self.parse_event_row(event_column_map, row)
 
@@ -82,36 +80,47 @@ class NovusAgendaScraper():
                     )
 
         if row.xpath('td[{}]//a[1]'.format(event_column_map['Online Agenda'])):
+            url = None
             link = row.xpath('td[{}]//a[1]'.format(event_column_map['Online Agenda']))[0]
             if link.get('href'):
                 url = link.get('href')
             elif link.get('onclick'):
                 url = self.extract_onclick(link.get('onclick'), self.BASE_URL)
-            event.add_document('Agenda', url, media_type="text/html")
+
+            if url:
+                event.add_document('Agenda', url, media_type="text/html")
 
         if row.xpath('td[{}]//a[1]'.format(event_column_map['Download Agenda'])):
+            url = None
             link = row.xpath('td[{}]//a[1]'.format(event_column_map['Download Agenda']))[0]
             if link.get('href'):
                 url = link.get('href')
             elif link.get('onclick'):
                 url = self.extract_onclick(link.get('onclick'), self.BASE_URL)
-            event.add_document('Agenda', url, media_type="application/pdf")
+            if url:
+                event.add_document('Agenda', url, media_type="application/pdf")
 
-        if row.xpath('td[{}]//a[1]'.format(event_column_map['Minutes Recap'])):
+        if 'Minutes Recap' in event_column_map and row.xpath('td[{}]//a[1]'.format(event_column_map['Minutes Recap'])):
+            url = None
             link = row.xpath('td[{}]//a[1]'.format(event_column_map['Minutes Recap']))[0]
             if link.get('href'):
                 url = link.get('href')
             elif link.get('onclick'):
                 url = self.extract_onclick(link.get('onclick'), self.BASE_URL)
-            event.add_document('Minutes Recap', url, media_type="text/html")
 
-        if row.xpath('td[{}]//a[1]'.format(event_column_map['Legal Minutes'])):
+            if url:
+                event.add_document('Minutes Recap', url, media_type="text/html")
+
+        if 'Legal Minutes' in event_column_map and row.xpath('td[{}]//a[1]'.format(event_column_map['Legal Minutes'])):
+            url = None
             link = row.xpath('td[{}]//a[1]'.format(event_column_map['Legal Minutes']))[0]
             if link.get('href'):
                 url = link.get('href')
             elif link.get('onclick'):
                 url = self.extract_onclick(link.get('onclick'), self.BASE_URL)
-            event.add_document('Legal Minutes', url, media_type="application/pdf")
+            
+            if url:
+                event.add_document('Legal Minutes', url, media_type="application/pdf")
 
         event.add_source(self.BASE_URL)
 
