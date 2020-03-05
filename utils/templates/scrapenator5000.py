@@ -5,6 +5,8 @@ import csv
 import sys
 from jinja2 import Template, Environment, FileSystemLoader
 
+# python3 utils/templates/scrapenator5000.py ~/work/local/scrapegen/sheet-out.csv
+
 def city_to_class(city):
     city = re.sub(r'\W+','', city)
     return city    
