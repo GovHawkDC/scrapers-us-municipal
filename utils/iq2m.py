@@ -76,6 +76,7 @@ class IQ2MScraper():
                 item_num = outline_row.xpath('td[contains(@class,"Num")]/text()')[0].strip()
                 item_title = '{} {}'.format(item_num, item_title)
                 # TODO: Should we add links here as documents? Might overwhelm
-            event.add_agenda_item(item_title)
+            if item_title != "":
+                event.add_agenda_item(item_title)
 
         yield event
