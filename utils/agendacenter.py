@@ -61,7 +61,6 @@ class AgendaCenterScraper:
     def scrape_event_page(self, agency_name, row):
 
         event_location = "Not provided"
-        event_name = "{} Meeting".format(agency_name)
 
         # Jul 18 2019
         event_date_str = row.xpath("string(td/h4/a/strong)").strip()
@@ -70,27 +69,68 @@ class AgendaCenterScraper:
 
         description = row.xpath("td/p/text()")[0].strip()
 
+        status = ''
+        if event_date > self.TIMEZONE.localize(datetime.datetime.today()):
+            status = 'tentative'
+        else:
+            status = 'passed'
+
+        if 'cancellation' in description.lower() or 'cancelled' in description.lower():
+            status = 'cancelled'
+
         event = Event(
-            name=event_name,
+            name=agency_name,
             start_date=event_date,
             description=description,
             location_name=event_location,
+            status=status
         )
         event.add_source(self.BASE_URL)
 
-        print(event_name, event_date, description, event_location)
+        print(agency_name, event_date, description, event_location, status)
 
         # participant = "{} {}".format(self.JURIS_NAME, event_group)
-        # event.add_participant(participant, 'organization')
+        event.add_participant(agency_name, 'organization')
 
-        # for link_row in page.xpath('//div[@id="ContentPlaceholder1_pnlDownloads"]/a[not(@onclick)]'):
-        #     link_href = link_row.xpath('@href')[0]
-        #     link_text = link_row.xpath('text()')[0].strip()
-        #     event.add_document(
-        #         link_text,
-        #         link_href,
-        #         on_duplicate='ignore'
-        #     )
+        if row.xpath('td[contains(@class,"videos")]/a'):
+            video_url = row.xpath('td[contains(@class,"videos")]/a/@href')[0]
+            event.add_media_link(
+                'Video',
+                video_url,
+                'text/html',
+                on_duplicate='ignore',
+            )
+
+        if row.xpath('td[contains(@class,"minutes")]/a'):
+            document_url = row.xpath('td[contains(@class,"minutes")]/a/@href')[0]
+            event.add_document(
+                'minutes',
+                document_url,
+                on_duplicate='ignore'
+            )      
+
+        if row.xpath('td[contains(@class,"downloads")]/div/a'):
+            for media_link in row.xpath('td[contains(@class,"downloads")]/div//ol/li/a'):
+                link_name = media_link.xpath('text()')[0].strip()
+                link_url = media_link.xpath('@href')[0].strip()
+                if 'pdf' in media_link.get('class'):
+                    media_type = 'application/pdf'
+                elif 'html' in media_link.get('class'):
+                    media_type = 'text/html'
+
+                if link_name == 'HTML' or link_name == 'PDF':
+                    event.add_document(
+                        'Agenda',
+                        link_url,
+                        on_duplicate='ignore'
+                    )
+                else:
+                    event.add_document(
+                        link_name,
+                        link_url,
+                        on_duplicate='ignore'
+                    )
+                print(link_name, link_url)
 
         # # TODO: ones with onlicks are video links
 
