@@ -8,7 +8,7 @@ import re
 import lxml.html
 
 
-class AgendaCenterScraper():
+class AgendaCenterScraper:
     BASE_URL = ""
     TIMEZONE = ""
     s = requests.Session()
@@ -18,14 +18,14 @@ class AgendaCenterScraper():
 
     def scrape(self, window=3):
         year = datetime.datetime.today().year
-        search_url = '{}/Search/'.format(self.BASE_URL)
+        search_url = "{}/Search/".format(self.BASE_URL)
         params = {
-            'term': '',
-            'CIDs': 'all',
-            'startDate': '01/01/{}'.format(year),
-            'endDate': '12/31/{}'.format(year),
-            'dateRange': '',
-            'dateSelector': '',
+            "term": "",
+            "CIDs": "all",
+            "startDate": "01/01/{}".format(year),
+            "endDate": "12/31/{}".format(year),
+            "dateRange": "",
+            "dateSelector": "",
         }
         headers = {
             "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -33,7 +33,6 @@ class AgendaCenterScraper():
             "referer": self.BASE_URL,
             "Sec-Fetch-Mode": "navigate",
         }
-
 
         req = self.s.get(search_url, params=params, headers=headers)
         req.raise_for_status()
@@ -44,35 +43,39 @@ class AgendaCenterScraper():
 
         # agencies
         for row in page.xpath('//div[contains(@class, "listing")]'):
+
             # it's typod as expandCollaspseCategory which seems like something they might fix, hence the OR
-            agency_name = row.xpath('h2[contains(@onclick, "expandCollaspseHeader") or contains(@onclick, "expandCollapseHeader")]/text()')[0].strip()
-            agency_name = agency_name.replace('Agendas', '').strip()
-        
+            agency_name = row.xpath(
+                'h2[contains(@onclick, "expandCollaspseHeader") or contains(@onclick, "expandCollapseHeader") '
+                'or contains(@onclick, "expandCollaspseCategory") or contains(@onclick, "expandCollapseCategory")]/text()'
+            )[0].strip()
+            agency_name = agency_name.replace("Agendas", "").strip()
+
             print(agency_name)
             # event_date = row.xpath('div[contains(@class, "RowTop")]/div[contains(@class, "RowLink")]/a/text()')[0].strip()
             # event_url = row.xpath('div[contains(@class, "RowTop")]/div[contains(@class, "RowLink")]/a/@href')[0].strip()
 
-            for event_row in row.xpath('.//table/tbody/tr'):
+            for event_row in row.xpath(".//table/tbody/tr"):
                 yield from self.scrape_event_page(agency_name, event_row)
 
     def scrape_event_page(self, agency_name, row):
 
-
-        event_location = 'Not provided'
-        event_name = '{} Meeting'.format(agency_name)
+        event_location = "Not provided"
+        event_name = "{} Meeting".format(agency_name)
 
         # Jul 18 2019
-        event_date_str = row.xpath('string(td/h4/a/strong)').strip()
-        event_date = datetime.datetime.strptime(event_date_str, '%b %d, %Y')
+        event_date_str = row.xpath("string(td/h4/a/strong)").strip()
+        event_date = datetime.datetime.strptime(event_date_str, "%b %d, %Y")
         event_date = self.TIMEZONE.localize(event_date)
 
-        description = row.xpath('td/p/text()')[0].strip()
+        description = row.xpath("td/p/text()")[0].strip()
 
-        event = Event(name=event_name,
+        event = Event(
+            name=event_name,
             start_date=event_date,
             description=description,
             location_name=event_location,
-            )
+        )
         event.add_source(self.BASE_URL)
 
         print(event_name, event_date, description, event_location)
