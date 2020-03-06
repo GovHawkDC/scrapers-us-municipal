@@ -114,6 +114,35 @@ def create_iq2m(row):
     ).dump(output_path+'/events.py')
     print("Generated iq2m Scraper for {}".format(city_name))
 
+def create_granicus(row):
+    file_loader = FileSystemLoader(THIS_DIR+'/granicus')
+    env = Environment(loader=file_loader)
+
+    city_name = row[2]
+    class_name = city_to_class(city_name)
+    city_lower = class_name.lower()
+
+    url = row[5]
+    # url = url.partition('agendapublic/')
+    # url = url[0] + url[1]
+
+    output_path = '{}/../../{}'.format(THIS_DIR, city_lower)
+
+    if not os.path.exists(output_path):
+        os.makedirs(output_path)
+
+    env.get_template('__init__.py').stream(
+        city_name=city_name,
+        class_name=class_name,
+        url=url,
+        ocd_id=row[13],
+    ).dump(output_path+'/__init__.py')
+    env.get_template('events.py').stream(
+        class_name=class_name,
+        url=url,
+        timezone=row[14],
+    ).dump(output_path+'/events.py')
+    print("Generated Granicus Scraper for {}".format(city_name))
 
 
 with open(sys.argv[1], mode='r') as infile:
@@ -129,6 +158,8 @@ with open(sys.argv[1], mode='r') as infile:
             create_agendacenter(row)
         elif provider == 'iq2m' and row[2] not in skips:
             create_iq2m(row)
+        elif provider == 'granicus' and row[2] not in skips:
+            create_granicus(row)
 
 print("All done.")
 

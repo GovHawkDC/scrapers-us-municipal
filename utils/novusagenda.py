@@ -98,6 +98,7 @@ class NovusAgendaScraper():
                     elif link.get('onclick'):
                         url = self.extract_onclick(link.get('onclick'), self.BASE_URL)
                     if url:
+                        # TODO: These aren't always pdfs. There seems to be a consistent DisplayAgendaPDF.ashx though
                         event.add_document('Agenda', url, media_type="application/pdf")
 
         if 'Minutes Recap' in event_column_map and row.xpath('td[{}]//a[1]'.format(event_column_map['Minutes Recap'])):
