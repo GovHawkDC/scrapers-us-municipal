@@ -8,7 +8,7 @@ import re
 import lxml.html
 
 
-class IQ2MScraper():
+class AgendaCenterScraper():
     BASE_URL = ""
     TIMEZONE = ""
     s = requests.Session()
@@ -18,70 +18,86 @@ class IQ2MScraper():
 
     def scrape(self, window=3):
         year = datetime.datetime.today().year
-        calendar_url = '{}/UpdateCategoryList'.format(self.BASE_URL)
-
+        search_url = '{}/Search/'.format(self.BASE_URL)
         params = {
-            'year': year,
-            'catID': '3', # TODO -- is all the same value here always?
             'term': '',
-            'prevVersionScreen': 'false',
+            'CIDs': 'all',
+            'startDate': '01/01/{}'.format(year),
+            'endDate': '12/31/{}'.format(year),
+            'dateRange': '',
+            'dateSelector': '',
+        }
+        headers = {
+            "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/79.0.3945.117 Safari/537.36",
+            "referer": self.BASE_URL,
+            "Sec-Fetch-Mode": "navigate",
         }
 
-        page = lxml.html.fromstring(requests.post(calendar_url, params).content)
+
+        req = self.s.get(search_url, params=params, headers=headers)
+        req.raise_for_status()
+        html = req.text
+
+        page = lxml.html.fromstring(html)
         page.make_links_absolute(self.BASE_URL)
 
-        for row in page.xpath('//div[contains(@class, "MeetingRow")]'):
+        # agencies
+        for row in page.xpath('//div[contains(@class, "listing")]'):
+            # it's typod as expandCollaspseCategory which seems like something they might fix, hence the OR
+            agency_name = row.xpath('h2[contains(@onclick, "expandCollaspseHeader") or contains(@onclick, "expandCollapseHeader")]/text()')[0].strip()
+            agency_name = agency_name.replace('Agendas', '').strip()
+        
+            print(agency_name)
             # event_date = row.xpath('div[contains(@class, "RowTop")]/div[contains(@class, "RowLink")]/a/text()')[0].strip()
-            event_url = row.xpath('div[contains(@class, "RowTop")]/div[contains(@class, "RowLink")]/a/@href')[0].strip()
-            yield from self.scrape_event_page(event_url)
+            # event_url = row.xpath('div[contains(@class, "RowTop")]/div[contains(@class, "RowLink")]/a/@href')[0].strip()
 
-    def scrape_event_page(self, url):
-        #TODO: CANCELLED
-        # http://providenceri.iqm2.com/Citizens/Detail_Meeting.aspx?ID=12362
-        self.info("Downloading {}".format(url))
-        page = lxml.html.fromstring(requests.get(url).content)
-        page.make_links_absolute(self.BASE_URL)
+            for event_row in row.xpath('.//table/tbody/tr'):
+                yield from self.scrape_event_page(agency_name, event_row)
 
-        event_group = page.xpath('//span[@id="ContentPlaceholder1_lblMeetingGroup"]/text()')[0].strip()
-        event_type = page.xpath('//span[@id="ContentPlaceholder1_lblMeetingType"]/text()')[0].strip()
-        # TODO: Clean up \u00a0 and other nbsp; issues
-        event_location = page.xpath('//div[contains(@class,"MeetingAddress")]/text()')[0].strip()
+    def scrape_event_page(self, agency_name, row):
 
-        event_name = '{} {}'.format(event_group, event_type)
 
-        event_date_str = page.xpath('//span[@id="ContentPlaceholder1_lblMeetingDate"]/text()')[0].strip()
-        # 3/25/2020 6:00 PM
-        event_date = datetime.datetime.strptime(event_date_str, '%m/%d/%Y %I:%M %p')
+        event_location = 'Not provided'
+        event_name = '{} Meeting'.format(agency_name)
+
+        # Jul 18 2019
+        event_date_str = row.xpath('string(td/h4/a/strong)').strip()
+        event_date = datetime.datetime.strptime(event_date_str, '%b %d, %Y')
         event_date = self.TIMEZONE.localize(event_date)
+
+        description = row.xpath('td/p/text()')[0].strip()
 
         event = Event(name=event_name,
             start_date=event_date,
-            # description=description,
+            description=description,
             location_name=event_location,
             )
-        event.add_source(url)
+        event.add_source(self.BASE_URL)
 
-        participant = "{} {}".format(self.JURIS_NAME, event_group)
-        event.add_participant(participant, 'organization')
+        print(event_name, event_date, description, event_location)
 
-        for link_row in page.xpath('//div[@id="ContentPlaceholder1_pnlDownloads"]/a[not(@onclick)]'):
-            link_href = link_row.xpath('@href')[0]
-            link_text = link_row.xpath('text()')[0].strip()
-            event.add_document(
-                link_text,
-                link_href,
-                on_duplicate='ignore'
-            )
+        # participant = "{} {}".format(self.JURIS_NAME, event_group)
+        # event.add_participant(participant, 'organization')
 
-        # TODO: ones with onlicks are video links
+        # for link_row in page.xpath('//div[@id="ContentPlaceholder1_pnlDownloads"]/a[not(@onclick)]'):
+        #     link_href = link_row.xpath('@href')[0]
+        #     link_text = link_row.xpath('text()')[0].strip()
+        #     event.add_document(
+        #         link_text,
+        #         link_href,
+        #         on_duplicate='ignore'
+        #     )
 
-        for outline_row in page.xpath('//span[@id="ContentPlaceholder1_lblOutline"]/table[@id="MeetingDetail"]/tr'):
-            item_title = outline_row.xpath('string(td[contains(@class,"Title")])').strip()
+        # # TODO: ones with onlicks are video links
 
-            if outline_row.xpath('td[contains(@class,"Num")]/text()'):
-                item_num = outline_row.xpath('td[contains(@class,"Num")]/text()')[0].strip()
-                item_title = '{} {}'.format(item_num, item_title)
-                # TODO: Should we add links here as documents? Might overwhelm
-            event.add_agenda_item(item_title)
+        # for outline_row in page.xpath('//span[@id="ContentPlaceholder1_lblOutline"]/table[@id="MeetingDetail"]/tr'):
+        #     item_title = outline_row.xpath('string(td[contains(@class,"Title")])').strip()
+
+        #     if outline_row.xpath('td[contains(@class,"Num")]/text()'):
+        #         item_num = outline_row.xpath('td[contains(@class,"Num")]/text()')[0].strip()
+        #         item_title = '{} {}'.format(item_num, item_title)
+        #         # TODO: Should we add links here as documents? Might overwhelm
+        #     event.add_agenda_item(item_title)
 
         yield event
