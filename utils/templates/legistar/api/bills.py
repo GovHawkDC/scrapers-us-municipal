@@ -6,6 +6,10 @@ import itertools
 import pytz
 import requests
 
+## TODO:
+# Loop through the known API scrapers from the spreadsheet, and just build a list of every 
+# document type, vote type, and any other enumerations.
+
 class {{ class_name }}BillScraper(LegistarAPIBillScraper, Scraper):
     BASE_URL = 'http://webapi.legistar.com/v1/{{city_id}}'
     BASE_WEB_URL = "https://{{city_id}}.legistar.com/"
