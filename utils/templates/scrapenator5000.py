@@ -3,6 +3,7 @@ import os
 import re
 import csv
 import sys
+import pprint
 from jinja2 import Template, Environment, FileSystemLoader
 
 # python3 utils/templates/scrapenator5000.py ~/work/local/scrapegen/sheet-out.csv
@@ -144,6 +145,38 @@ def create_granicus(row):
     ).dump(output_path+'/events.py')
     print("Generated Granicus Scraper for {}".format(city_name))
 
+def create_legistar_api(row, city_id):
+    file_loader = FileSystemLoader(THIS_DIR+'/legistar/api')
+    env = Environment(loader=file_loader)
+
+    city_name = row[2]
+    class_name = city_to_class(city_name)
+    city_lower = class_name.lower()
+
+    url = row[5]
+    # url = url.partition('agendapublic/')
+    # url = url[0] + url[1]
+
+    output_path = '{}/../../{}'.format(THIS_DIR, city_lower)
+
+    if not os.path.exists(output_path):
+        os.makedirs(output_path)
+
+    env.get_template('__init__.py').stream(
+        city_name=city_name,
+        class_name=class_name,
+        url=url,
+        ocd_id=row[13],
+        city_id=city_id,
+    ).dump(output_path+'/__init__.py')
+
+    env.get_template('events.py').stream(
+        class_name=class_name,
+        url=url,
+        timezone=row[14],
+        city_id=city_id,
+    ).dump(output_path+'/events.py')
+    print("Generated Legistar API Scraper for {}".format(city_name))
 
 with open(sys.argv[1], mode='r') as infile:
     reader = csv.reader(infile)
@@ -160,6 +193,14 @@ with open(sys.argv[1], mode='r') as infile:
             create_iq2m(row)
         elif provider == 'granicus' and row[2] not in skips:
             create_granicus(row)
+        elif provider == 'legistar' and row[2] not in skips:
+            pprint.pprint(row)
+            city_id = row[22]
+            if city_id:
+                create_legistar_api(row, city_id)
+            else:
+                # create legistar web scraper
+                pass
 
 print("All done.")
 
