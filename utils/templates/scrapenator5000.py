@@ -176,6 +176,13 @@ def create_legistar_api(row, city_id):
         timezone=row[14],
         city_id=city_id,
     ).dump(output_path+'/events.py')
+
+    env.get_template('bills.py').stream(
+        class_name=class_name,
+        url=url,
+        timezone=row[14],
+        city_id=city_id,
+    ).dump(output_path+'/bills.py')    
     print("Generated Legistar API Scraper for {}".format(city_name))
 
 with open(sys.argv[1], mode='r') as infile:
