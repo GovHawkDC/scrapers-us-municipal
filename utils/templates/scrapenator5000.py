@@ -8,12 +8,30 @@ from jinja2 import Template, Environment, FileSystemLoader
 
 # python3 utils/templates/scrapenator5000.py ~/work/local/scrapegen/sheet-out.csv
 
+## Generate a CSV from our spreadsheet of jurisdictions and providers
+# and build scraper stubs for all of them.
+# the create_PROVIDER functions will load the templates/PROVIDER/ files
+# and sub in the needed variables for python classname, url, ocd id, etc
+
+# Note that most providers only get __init__ and events.py --
+# only legistar offers bills right now.
+# TODO: investigate municode's ordinances pages and see if that
+# fits our bill model well enough
+
+# All of the generated scrapers inherit from the base classes in 
+# templates/PROVIDER.py -- that's where the real work is done.
+
+# legistar has two different types of scraper,
+# those with a public API and those without (api vs web)
+
 #TODO: turns out it's iqm2 not iq2m. How embarrassing.
 
+# Sub out whitespace in the city name
 def city_to_class(city):
     city = re.sub(r'\W+','', city)
     return city    
 
+# pull legistar city ID from url
 def legistar_city_id(url):
     # Bodies page is a good small / quick to load API test
     # http://webapi.legistar.com/v1/<id>/bodies
@@ -24,6 +42,7 @@ def legistar_city_id(url):
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
+# ignore these rows
 skips = [
     'LA City'
 ]
