@@ -6,12 +6,14 @@ import sys
 import pprint
 from jinja2 import Template, Environment, FileSystemLoader
 
-# python3 utils/templates/scrapenator5000.py ~/work/local/scrapegen/sheet-out.csv
+# python3 utils/templates/scrapenator5000.py sheet.csv
 
-## Generate a CSV from our spreadsheet of jurisdictions and providers
+## Load our spreadsheet of jurisdictions and providers
 # and build scraper stubs for all of them.
+#
 # the create_PROVIDER functions will load the templates/PROVIDER/ files
 # and sub in the needed variables for python classname, url, ocd id, etc
+# TODO: just have one create provider function that takes provider as an arg
 
 # Note that most providers only get __init__ and events.py --
 # only legistar offers bills right now.
@@ -273,7 +275,7 @@ with open(sys.argv[1], mode='r') as infile:
         elif provider == 'granicus' and row[2] not in skips:
             create_granicus(row)
         elif provider == 'legistar' and row[2] not in skips:
-            city_id = row[22]
+            city_id = row[17]
             if city_id:
                 create_legistar_api(row, city_id)
             else:
