@@ -44,22 +44,17 @@ def legistar_city_id(url):
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# ignore these rows
-skips = [
-    'LA City'
-]
-
 def create_novusagenda(row):
     file_loader = FileSystemLoader(THIS_DIR+'/novusagenda')
     env = Environment(loader=file_loader)
 
     # TODO: Make sure url has novusagenda in it or skip
-    city_name = row[2]
+    city_name = row['name']
     class_name = city_to_class(city_name)
     city_lower = class_name.lower()
 
     # safe to lcase novusagenda urls
-    url = row[5].lower()
+    url = row['Leg Link'].lower()
     url = url.partition('agendapublic/')
     url = url[0] + url[1]
 
@@ -72,12 +67,12 @@ def create_novusagenda(row):
         city_name=city_name,
         class_name=class_name,
         url=url,
-        ocd_id=row[13],
+        ocd_id=row['ocd'],
     ).dump(output_path+'/__init__.py')
     env.get_template('events.py').stream(
         class_name=class_name,
         url=url,
-        timezone=row[14],
+        timezone=row['tz'],
     ).dump(output_path+'/events.py')
     print("Generated NovusAgenda Scraper for {}".format(city_name))
 
@@ -86,11 +81,11 @@ def create_agendacenter(row):
     env = Environment(loader=file_loader)
 
     # TODO: Make sure url has novusagenda in it or skip
-    city_name = row[2]
+    city_name = row['name']
     class_name = city_to_class(city_name)
     city_lower = class_name.lower()
 
-    url = row[5]
+    url = row['Leg Link']
     # url = url.partition('agendapublic/')
     # url = url[0] + url[1]
 
@@ -103,12 +98,12 @@ def create_agendacenter(row):
         city_name=city_name,
         class_name=class_name,
         url=url,
-        ocd_id=row[13],
+        ocd_id=row['ocd'],
     ).dump(output_path+'/__init__.py')
     env.get_template('events.py').stream(
         class_name=class_name,
         url=url,
-        timezone=row[14],
+        timezone=row['tz'],
     ).dump(output_path+'/events.py')
     print("Generated AgendaCenter Scraper for {}".format(city_name))
 
@@ -117,11 +112,11 @@ def create_iq2m(row):
     env = Environment(loader=file_loader)
 
     # TODO: Make sure url has novusagenda in it or skip
-    city_name = row[2]
+    city_name = row['name']
     class_name = city_to_class(city_name)
     city_lower = class_name.lower()
 
-    url = row[5].lower()
+    url = row['Leg Link'].lower()
     url = url.partition('.iqm2.com/')
     url = url[0] + url[1]
 
@@ -134,12 +129,12 @@ def create_iq2m(row):
         city_name=city_name,
         class_name=class_name,
         url=url,
-        ocd_id=row[13],
+        ocd_id=row['ocd'],
     ).dump(output_path+'/__init__.py')
     env.get_template('events.py').stream(
         class_name=class_name,
         url=url,
-        timezone=row[14],
+        timezone=row['tz'],
         city_name=city_name,
     ).dump(output_path+'/events.py')
     print("Generated iq2m Scraper for {}".format(city_name))
@@ -148,11 +143,11 @@ def create_granicus(row):
     file_loader = FileSystemLoader(THIS_DIR+'/granicus')
     env = Environment(loader=file_loader)
 
-    city_name = row[2]
+    city_name = row['name']
     class_name = city_to_class(city_name)
     city_lower = class_name.lower()
 
-    url = row[5]
+    url = row['Leg Link']
     # url = url.partition('agendapublic/')
     # url = url[0] + url[1]
 
@@ -165,12 +160,12 @@ def create_granicus(row):
         city_name=city_name,
         class_name=class_name,
         url=url,
-        ocd_id=row[13],
+        ocd_id=row['ocd'],
     ).dump(output_path+'/__init__.py')
     env.get_template('events.py').stream(
         class_name=class_name,
         url=url,
-        timezone=row[14],
+        timezone=row['tz'],
     ).dump(output_path+'/events.py')
     print("Generated Granicus Scraper for {}".format(city_name))
 
@@ -178,11 +173,11 @@ def create_legistar_api(row, city_id):
     file_loader = FileSystemLoader(THIS_DIR+'/legistar/api')
     env = Environment(loader=file_loader)
 
-    city_name = row[2]
+    city_name = row['name']
     class_name = city_to_class(city_name)
     city_lower = class_name.lower()
 
-    url = row[5]
+    url = row['Leg Link']
     # url = url.partition('agendapublic/')
     # url = url[0] + url[1]
 
@@ -195,21 +190,21 @@ def create_legistar_api(row, city_id):
         city_name=city_name,
         class_name=class_name,
         url=url,
-        ocd_id=row[13],
+        ocd_id=row['ocd'],
         city_id=city_id,
     ).dump(output_path+'/__init__.py')
 
     env.get_template('events.py').stream(
         class_name=class_name,
         url=url,
-        timezone=row[14],
+        timezone=row['tz'],
         city_id=city_id,
     ).dump(output_path+'/events.py')
 
     env.get_template('bills.py').stream(
         class_name=class_name,
         url=url,
-        timezone=row[14],
+        timezone=row['tz'],
         city_id=city_id,
     ).dump(output_path+'/bills.py')    
     print("Generated Legistar API Scraper for {}".format(city_name))
@@ -218,15 +213,13 @@ def create_legistar_web(row):
     file_loader = FileSystemLoader(THIS_DIR+'/legistar/web')
     env = Environment(loader=file_loader)
 
-    city_id = legistar_city_id(row[5])
+    city_id = legistar_city_id(row['Leg Link'])
 
-    city_name = row[2]
+    city_name = row['name']
     class_name = city_to_class(city_name)
     city_lower = class_name.lower()
 
-    url = row[5]
-    # url = url.partition('agendapublic/')
-    # url = url[0] + url[1]
+    url = row['Leg Link']
 
     output_path = '{}/../../{}'.format(THIS_DIR, city_lower)
 
@@ -237,49 +230,62 @@ def create_legistar_web(row):
         city_name=city_name,
         class_name=class_name,
         url=url,
-        ocd_id=row[13],
+        ocd_id=row['ocd'],
         city_id=city_id,
     ).dump(output_path+'/__init__.py')
 
     env.get_template('events.py').stream(
         class_name=class_name,
         url=url,
-        timezone=row[14],
+        timezone=row['tz'],
         city_id=city_id,
     ).dump(output_path+'/events.py')
 
     # env.get_template('bills.py').stream(
     #     class_name=class_name,
     #     url=url,
-    #     timezone=row[14],
+    #     timezone=row['tz'],
     #     city_id=city_id,
     # ).dump(output_path+'/bills.py')    
     print("Generated Legistar Web Scraper for {}".format(city_name))
 
 
+# ignore these rows
+skips = [
+    
+]
 
 
 with open(sys.argv[1], mode='r') as infile:
-    reader = csv.reader(infile)
+    reader = csv.DictReader(infile)
     for row in reader:
-        if row[2].lower() == 'done':
+        provider = row['Leg Provider'].lower()
+
+        if provider == 'done' or provider == '' or provider == '?':
             continue
 
-        provider = row[4].lower()
-        if provider == 'novusagenda' and row[2] not in skips:
+        if row['ocd'] in skips:
+            continue
+
+        if int(row['population']) < 50000:
+            continue
+
+        if provider == 'novusagenda':
             create_novusagenda(row)
-        elif provider == 'agendacenter' and row[2] not in skips:
+        elif provider == 'agendacenter':
             create_agendacenter(row)
-        elif provider == 'iq2m' and row[2] not in skips:
+        elif provider == 'iqm2':
             create_iq2m(row)
-        elif provider == 'granicus' and row[2] not in skips:
+        elif provider == 'granicus':
             create_granicus(row)
-        elif provider == 'legistar' and row[2] not in skips:
-            city_id = row[17]
+        elif provider == 'legistar':
+            city_id = row['Legistar API']
             if city_id:
                 create_legistar_api(row, city_id)
             else:
                 create_legistar_web(row)
+
+
 
 print("All done.")
 
