@@ -146,7 +146,11 @@ class {{ class_name }}BillScraper(LegistarAPIBillScraper, Scraper):
             bill_session = self.session(self.toTime(date))
             # TODO: if it's not in .. maybe just throw a warning?
             # nice to blow up for now while deving
-            bill_type = BILL_TYPES[matter['MatterTypeName']]
+            if matter['MatterTypeName'] in BILL_TYPES:
+                bill_type = BILL_TYPES[matter['MatterTypeName']]
+            else:
+                self.warning("Unknown bill type: {}".format(matter['MatterTypeName']))
+                bill_type = None
 
             if identifier.startswith('S'):
                 alternate_identifiers = [identifier]
@@ -246,5 +250,6 @@ BILL_TYPES = {'Ordinance' : 'ordinance',
               'Report' : None,
               'Ceremonial Item': None,
               'Minutes': None,
+              'Board/Commission': None,
               }
 
