@@ -86,6 +86,9 @@ def create_agendacenter(row):
     city_lower = class_name.lower()
 
     url = row['Leg Link']
+    url = url.split('/AgendaCenter/', 1)[0]
+    url = '{}/AgendaCenter/'.format(url)
+
     # url = url.partition('agendapublic/')
     # url = url[0] + url[1]
 
@@ -137,7 +140,7 @@ def create_iq2m(row):
         timezone=row['tz'],
         city_name=city_name,
     ).dump(output_path+'/events.py')
-    print("Generated iq2m Scraper for {}".format(city_name))
+    print("Generated IQM2 Scraper for {}".format(city_name))
 
 def create_granicus(row):
     file_loader = FileSystemLoader(THIS_DIR+'/granicus')
