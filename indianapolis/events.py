@@ -64,6 +64,21 @@ class IndianapolisEventScraper(Scraper):
                     note="Contact"
                 )
 
+            if (event_name.lower() == 'city-county council meeting'):
+                test_date = event_start.strftime('%Y-%m-%d')
+
+                if (test_date in self.agendas):
+                    event.add_document(
+                        "Agenda",
+                        self.agendas[test_date]
+                    )
+                
+                if (test_date in self.minutes):
+                    event.add_document(
+                        "Minutes",
+                        self.minutes[test_date]
+                    )
+
             event.add_source('http://calendar.indy.gov/')
             yield event
 
@@ -96,7 +111,6 @@ class IndianapolisEventScraper(Scraper):
        
         for related in page['related_activities']:
             if 'Council Meeting Minutes' in related['title']:
-                print("RUNNING MINUTES PARSER")
                 # - [Month Day, Year](url)
                 minutes_regex = r'-\s*\[(?P<month>\w+)\s+(?P<day>\d+)[,]*\s+(?P<year>\d+)\]\((?P<url>[\w\d\.\:\/\-]+)\)'
                 self.minutes = self.parse_markdown_field(related['description'], minutes_regex)
