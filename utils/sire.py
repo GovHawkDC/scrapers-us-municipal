@@ -16,8 +16,9 @@ class SireScraper:
     def session(self, action_date):
         return str(action_date.year)
 
-    def scrape(self, window=3):
-        year = str(datetime.datetime.today().year)
+    def scrape(self, year=None, window=3):
+        if year is None:
+            year = str(datetime.datetime.today().year)
         search_url = "{}/meetresults.aspx?view=tabs&startdate=01-01-{}&enddate=12-31-{}".format(self.BASE_URL, year, year)
     
         # some also have rss/rss.aspx but not all

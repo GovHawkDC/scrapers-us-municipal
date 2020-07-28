@@ -17,7 +17,7 @@ class {{ class_name }}EventScraper(LegistarEventsScraper, Scraper):
         n_days_ago = datetime.datetime.utcnow() - datetime.timedelta(float(window))
 
         for web_event in self.events(n_days_ago):
-            pprint.pprint(web_event)
+            # pprint.pprint(web_event)
             yield web_event
 
 

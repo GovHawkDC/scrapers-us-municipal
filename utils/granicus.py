@@ -45,13 +45,13 @@ class GranicusScraper():
 
             event.add_source(self.BASE_URL)
 
-            print(event)
+            # print(event)
 
             yield event
     
     def scrape_past(self, page, window):
 
-        for row in page.xpath('//table[@id="archive"]/tbody/tr'):
+        for row in page.xpath('//table[contains(@class,"listingTable")]/tbody/tr'):
             event_name = row.xpath('string(td[contains(@headers,"Name")])').strip()
             # inside the date td is a display:none span w/ the unixtime.
             event_date =  row.xpath('td[contains(@headers,"Date")]/span[1]/text()')[0].strip()
@@ -79,6 +79,6 @@ class GranicusScraper():
             # TODO: Video and extracting that link from the js popup
 
             event.add_source(self.BASE_URL)
-            print(event)
+            # print(event)
 
             yield event

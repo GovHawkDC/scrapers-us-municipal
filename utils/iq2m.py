@@ -17,8 +17,9 @@ class IQ2MScraper():
     def session(self, action_date):
         return str(action_date.year)
 
-    def scrape(self, window=3):
-        year = datetime.datetime.today().year
+    def scrape(self, year=None, window=3):
+        if year is None:
+            year = datetime.datetime.today().year
         calendar_url = '{}/Citizens/Calendar.aspx?From=1/1/{}&To=12/31/{}'.format(self.BASE_URL, year, year)
 
         page = lxml.html.fromstring(requests.get(calendar_url).content)

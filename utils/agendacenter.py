@@ -16,8 +16,9 @@ class AgendaCenterScraper:
     def session(self, action_date):
         return str(action_date.year)
 
-    def scrape(self, window=3):
-        year = datetime.datetime.today().year
+    def scrape(self, year=None, window=3):
+        if year is None:
+            year = datetime.datetime.today().year
         search_url = "{}/Search/".format(self.BASE_URL)
         params = {
             "term": "",
@@ -51,10 +52,6 @@ class AgendaCenterScraper:
             )[0].strip()
             agency_name = agency_name.replace("Agendas", "").strip()
 
-            print(agency_name)
-            # event_date = row.xpath('div[contains(@class, "RowTop")]/div[contains(@class, "RowLink")]/a/text()')[0].strip()
-            # event_url = row.xpath('div[contains(@class, "RowTop")]/div[contains(@class, "RowLink")]/a/@href')[0].strip()
-
             for event_row in row.xpath(".//table/tbody/tr"):
                 yield from self.scrape_event_page(agency_name, event_row)
 
@@ -87,7 +84,7 @@ class AgendaCenterScraper:
         )
         event.add_source(self.BASE_URL)
 
-        print(agency_name, event_date, description, event_location, status)
+        # print(agency_name, event_date, description, event_location, status)
 
         # participant = "{} {}".format(self.JURIS_NAME, event_group)
         event.add_participant(agency_name, 'organization')

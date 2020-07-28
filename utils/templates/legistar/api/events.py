@@ -17,7 +17,7 @@ class {{ class_name }}EventScraper(LegistarAPIEventScraper, Scraper):
         n_days_ago = datetime.datetime.utcnow() - datetime.timedelta(float(window))
 
         for api_event, web_event in self.events(n_days_ago):
-            pprint.pprint(web_event)
+            # pprint.pprint(web_event)
 
             when = api_event['start']
             location = api_event[u'EventLocation']

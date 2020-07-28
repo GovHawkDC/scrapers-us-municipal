@@ -26,6 +26,7 @@ from jinja2 import Template, Environment, FileSystemLoader
 # legistar has two different types of scraper,
 # those with a public API and those without (api vs web)
 
+#TODO: If multiple places have the same place name, the overwrite
 #TODO: turns out it's iqm2 not iq2m. How embarrassing.
 
 # Sub out whitespace in the city name
@@ -85,9 +86,9 @@ def create_agendacenter(row):
     class_name = city_to_class(city_name)
     city_lower = class_name.lower()
 
-    url = row['Leg Link']
-    url = url.split('/AgendaCenter/', 1)[0]
-    url = '{}/AgendaCenter/'.format(url)
+    url = row['Leg Link'].lower()
+    url = url.split('/agendacenter/', 1)[0]
+    url = '{}/agendacenter/'.format(url)
 
     # url = url.partition('agendapublic/')
     # url = url[0] + url[1]
