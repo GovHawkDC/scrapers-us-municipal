@@ -9,18 +9,25 @@ class IndianapolisEventScraper(Scraper):
     TIMEZONE = pytz.timezone('America/Indiana/Indianapolis')
 
     def scrape(self):
-        # http://calendar.indy.gov/Eventlist.aspx?fromdate=7/1/2020&todate=8/31/2020&display=Month&view=Grid&type=public&download=download&dlType=XML
+        # http://calendar.indy.gov/Eventlist.aspx?fromdate=7/1/2020&todate=8/31/2020
+        # &display=Month&view=Grid&type=public&download=download&dlType=XML
 
-        url = 'http://calendar.indy.gov/Eventlist.aspx?fromdate=7/1/2020&todate=8/31/2020&display=Month&view=Grid&type=public&download=download&dlType=XML'
+        today = datetime.date.today()
+        three_months = today + datetime.timedelta(3 * 30)
+
+        today = today.strftime('%m/%d/%Y')
+        three_months = three_months.strftime('%m/%d/%Y')
+
+        url = 'http://calendar.indy.gov/Eventlist.aspx?fromdate={}&todate={}' \
+            '&display=Month&' \
+            'view=Grid&type=public&download=download&dlType=XML'
+        url = url.format(today, three_months)
         page = self.get(url).content
         page = etree.fromstring(page)
-
 
         for row in page.xpath('//Event'):
             event_name = row.xpath('string(EventName)')
             event_desc = row.xpath('string(EventDescription)')
-            start_date = row.xpath('string(StartDate)')
-            start_time = row.xpath('string(StartTime)')
 
             event_loc = "See Description"
 
@@ -37,7 +44,7 @@ class IndianapolisEventScraper(Scraper):
             event = Event(
                 name=event_name,
                 start_date=event_start,
-                end_date = event_end,
+                end_date=event_end,
                 description=event_desc,
                 location_name=event_loc,
             )
@@ -61,4 +68,4 @@ class IndianapolisEventScraper(Scraper):
         else:
             return self.TIMEZONE.localize(
                 datetime.datetime.strptime(day, "%m/%d/%Y")
-            )                
+            )
