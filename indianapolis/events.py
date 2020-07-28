@@ -123,7 +123,6 @@ class IndianapolisEventScraper(Scraper):
         matches = re.findall(link_regex, markdown, re.MULTILINE)
 
         for match in matches:
-            # print(match)
             date_str = '{}-{}-{}'.format(
                 match[0],
                 match[1],
