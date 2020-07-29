@@ -60,6 +60,7 @@ class DetroitEventScraper(Scraper):
             date = date.split('T')[0]
             # just the time
             time = page.xpath('string(//article[@class="time"])').strip()
+            time = re.findall(r'\d+:\d+\s+\w{2}', time, re.IGNORECASE)[0]
             event_date = pytz.utc.localize(
                 datetime.datetime.strptime(
                     '{} {}'.format(date, time),
