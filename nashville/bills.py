@@ -37,14 +37,45 @@ class NashvilleBillScraper(Scraper):
         page = lxml.html.fromstring(page)
         page.make_links_absolute(url)
 
-        header = page.xpath('//div[contains(@id,"LegislationDetails")]/h1/text()')[0]
-        bill_number = re.search(r"\w{2}\d{4}-\d+", header).group(0)
+        bill_title = page.xpath('//div[contains(@id,"LegislationDetails")]/h1/text()')[0]
+        identifier = re.search(r"\w{2}\d{4}-\d+", bill_title).group(0)
 
-        print(bill_number)
+        if '/Ordinances/' in url:
+            bill_type = 'ordinance'
+        else:
+            bill_type = 'resolution'
 
+        bill = Bill(
+            identifier=identifier,
+            legislative_session=self.session,
+            chamber='upper',
+            title=bill_title,
+            classification=bill_type,
+        )
         # TODO: Versions, Actions, Sponsors
 
-        yield {}
+        sponsors_text = page.xpath('//h2[contains(text(), "Sponsor(s)")]//following-sibling::p[1]/text()')[0]
+        sponsors = sponsors_text.split(",")
+
+        for sponsor in sponsors:
+            bill.add_sponsorship(
+                sponsor.strip(),
+                classification="primary",
+                entity_type="person",
+                primary=True
+            )
+
+        for doc_link in page.xpath('//h2[contains(text(), "Documents")]//following-sibling::ul[1]/li/a'):
+            doc_url = doc_link.xpath('@href')[0]
+            doc_name = doc_link.xpath('text()')[0].replace('Download ','').strip()
+            bill.add_version_link(
+                doc_name,
+                doc_url
+            )
+
+        bill.add_source(url)
+
+        yield bill
 
     # extract the session from the listing page header
     def scrape_session(self, page):
