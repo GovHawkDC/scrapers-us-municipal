@@ -17,8 +17,8 @@ class DetroitEventScraper(Scraper):
         # needs to be implemented
         yield from self.scrape_calendar_page(0)
 
-        if last_page > 0:
-            for i in xrange(1, last_page):
+        if self.last_page > 0:
+            for i in range(1, self.last_page):
                 yield from self.scrape_calendar_page(i)
         pass
 
@@ -33,7 +33,7 @@ class DetroitEventScraper(Scraper):
 
         if page_num == 0:
             last_link = page.xpath('//a[@rel="last"]/@href')[0]
-            self.last_page = last_link[-1]
+            self.last_page = int(last_link[-1])
         
         # '//div[section[contains(@class,"event-preview-top")]]'
         for row in page.xpath('//div[section[contains(@class,"event-preview-top")]]'):
@@ -49,7 +49,6 @@ class DetroitEventScraper(Scraper):
             # note that the time tag in the date has the wrong hour,
             # but the time tag under the time has the right date and hour
             time = page.xpath('//article[@class="time"]/time/@datetime')[0]
-            print(time)
 
             event_date = pytz.utc.localize(
                 datetime.datetime.strptime(time, '%Y-%m-%dT%H:%M:%SZ')
@@ -69,7 +68,6 @@ class DetroitEventScraper(Scraper):
             )
 
 
-
         event_name = page.xpath('//h1[contains(@class,"page-header")]/span/text()')[0]
 
         event_loc = "See Description"
@@ -80,7 +78,7 @@ class DetroitEventScraper(Scraper):
         event_desc=""
 
         if page.xpath('//article[contains(@class,"description")]'):
-            event_desc = page.xpath('string(//article[contains(@class,"description")])')
+            event_desc = page.xpath('string(//article[contains(@class,"description")])').strip()
 
         event = Event(
             name=event_name,
