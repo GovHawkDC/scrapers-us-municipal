@@ -5,6 +5,8 @@ import re
 from pupa.scrape import Scraper
 from pupa.scrape import Event
 
+# TODO: Pagination looked like a gnarly asp.net form submission reversing
+# so skip for now
 
 class NashvilleEventScraper(Scraper):
     TIMEZONE = pytz.timezone("America/Chicago")

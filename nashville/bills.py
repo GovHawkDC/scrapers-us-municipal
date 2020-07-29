@@ -42,6 +42,8 @@ class NashvilleBillScraper(Scraper):
 
         print(bill_number)
 
+        # TODO: Versions, Actions, Sponsors
+
         yield {}
 
     # extract the session from the listing page header
