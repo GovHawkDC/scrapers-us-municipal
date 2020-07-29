@@ -1,12 +1,13 @@
 import datetime
+import lxml.html
 import pytz
-from lxml import etree, html
+import re
 from pupa.scrape import Scraper
 from pupa.scrape import Event
 
 
 class NashvilleEventScraper(Scraper):
-     TIMEZONE = pytz.timezone('America/Chicago')
+    TIMEZONE = pytz.timezone('America/Chicago')
     agendas = {}
     minutes = {}
 
@@ -28,14 +29,43 @@ class NashvilleEventScraper(Scraper):
         event_title = page.xpath('//h1/text()')[0].strip()
 
         # we can use the google cal link to get nice clean start and end times
-        gcal_link = page.xpath('//div[@class="addtocal-wrap"]/div/ul/li/a[contains(@id, "hlGoogleCalendar")]')
+        gcal_link = page.xpath('//div[@class="addtocal-wrap"]/div/ul/li/a[contains(@id, "hlGoogleCalendar")]/@href')[0]
+        print(gcal_link)
+
+        dates = re.search(r'&dates=(.*?)&', gcal_link).group(1)
+        dates = dates.split('/')
+
+        print(dates)
+
+        event_start = self.TIMEZONE.localize(
+            datetime.datetime.strptime(
+                dates[0],
+                '%Y%m%dT%H%M%SZ'
+            )
+        )
+
+        event_end = self.TIMEZONE.localize(
+            datetime.datetime.strptime(
+                dates[1],
+                '%Y%m%dT%H%M%SZ'
+            )
+        )
+
+        event_desc = ''
+
+        event_loc = 'TBD'
 
         # regex of &dates=(.*)& to snag those dates
         # then split on / and parse it up
 
         event = Event(
-            name=event_name,
+            name=event_title,
             start_date=event_start,
+            end_date=event_end,
             description=event_desc,
             location_name=event_loc,
         )
+
+        event.add_source(url)
+
+        yield event
