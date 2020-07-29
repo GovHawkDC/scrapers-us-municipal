@@ -12,7 +12,22 @@ class NashvilleEventScraper(Scraper):
     minutes = {}
 
     def scrape(self):
-        url = "https://www.nashville.gov/News-Media/Calendar-of-Events.aspx"
+        agenda_url = 'https://www.nashville.gov/Metro-Clerk/Legislative/Agendas.aspx'
+        self.agendas = self.scrape_file_list(agenda_url)
+
+        minutes_url = 'https://www.nashville.gov/Metro-Clerk/Legislative/Minutes.aspx'
+        self.minutes = self.scrape_file_list(minutes_url)
+
+        today = datetime.date.today()
+        
+        fwd_one_month = today + datetime.timedelta(30)
+        back_one_week = today - datetime.timedelta(7)
+
+        fwd_one_month = fwd_one_month.strftime('%m-%d-%Y')
+        back_one_week = back_one_week.strftime('%m-%d-%Y')
+
+        url = "https://www.nashville.gov/News-Media/Calendar-of-Events.aspx?sdate={}&edate={}"
+        url = url.format(back_one_week, fwd_one_month)
         page = self.get(url).content
         page = lxml.html.fromstring(page)
         page.make_links_absolute(url)
@@ -80,7 +95,40 @@ class NashvilleEventScraper(Scraper):
             doc_url = doc_link.xpath("@href")[0]
             doc_title = doc_link.xpath("text()")[0].strip()
 
-            print(doc_url, doc_title)
-            event.add_document(doc_title, doc_url)
+            event.add_document(doc_title, doc_url, on_duplicate='ignore')
+
+        if 'metropolitan council meeting' in event_title.lower():
+            date_key = event_start.strftime('%Y%m%d')
+            if date_key in self.agendas:
+                event.add_document(
+                    'Agenda',
+                    self.agendas[date_key],
+                    on_duplicate="ignore"
+                )
+            if date_key in self.minutes:
+                event.add_document(
+                    'Minutes',
+                    self.minutes[date_key],
+                    on_duplicate="ignore"
+                )
 
         yield event
+
+    # agendas as minutes aren't always linked from the event pages
+    # so scrape them first and save them in a mapping of YYYYMMDD => url
+    def scrape_file_list(self, url):
+        retVal = {}
+
+        page = self.get(url).content
+        page = lxml.html.fromstring(page)
+        page.make_links_absolute(url)
+        
+        for row in page.xpath('//div[contains(@class,"ShowFilesColumn")]/ul/li/a'):
+            link_url = row.xpath('@href')[0]
+            link_text = row.xpath('text()')[0]
+            # extract just the date, they've got some funky extras sometimes
+            link_text = re.findall(r'\w+\s+\d+,\s+\d{4}', link_text, re.IGNORECASE)[0]
+            link_date = datetime.datetime.strptime(link_text, '%B %d, %Y')
+            link_key = link_date.strftime('%Y%m%d')
+            retVal[link_key] = link_url
+        return retVal
