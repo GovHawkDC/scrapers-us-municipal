@@ -90,7 +90,6 @@ class NashvilleBillScraper(Scraper):
     # extract the session from the listing page header
     def scrape_session(self, page):
         header = page.xpath('string(//h1[contains(text(), "Resolution")])')
-        print(header)
         return re.search(r"\d{4}-\d{4}", header).group(0)
 
     def scrape_actions(self, bill, page):
@@ -118,12 +117,11 @@ class NashvilleBillScraper(Scraper):
                     classification = None
 
                     if "Introduced" in action_text:
-                        classification = "Introduced"
+                        classification = "introduction"
 
                     if "Approved" in action_text:
                         classification = "became-law"
 
-                    print("Adding action {}".format(action_text.strip()))
                     bill.add_action(
                         action_text.strip(),
                         action_date,
