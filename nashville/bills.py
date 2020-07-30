@@ -105,10 +105,15 @@ class NashvilleBillScraper(Scraper):
                     continue
 
                 action_date_col = row.xpath("span[2]/text()")[0]
+
+                # sigh
+                action_date_col = action_date_col.replace('Febraury', 'February')
+                action_date_col = action_date_col.replace('Juy', 'July')
+
                 # most rows are a date but referrals are undated,
                 # so skip those. Other dates are of the format:
                 # October 15, 2019
-                action_date = re.search(r"\w+\s+\d+,\s+\d+", action_date_col)
+                action_date = re.search(r"\w+\s+\d+,\s+\d{4}", action_date_col)
 
                 if action_date is not None and action_date.group(0):
                     action_date = self.TIMEZONE.localize(
